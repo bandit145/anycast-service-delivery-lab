@@ -1,0 +1,71 @@
+---
+
+- name: Configure application host
+  hosts: all
+  gather_facts: true
+
+  tasks:
+
+    - name: set hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: get router_id
+      set_fact: 
+        router_id: "0.0.0.{{ inventory_hostname[-1] }}"
+
+    - name: set ipv4 forwarding
+      ansible.posix.sysctl:
+        name: "net.ipv4.conf.all.forwarding"
+        value: "1"
+
+    - name: add service address to loopback
+      ansible.builtin.command: ip addr add 192.168.200.1 dev lo
+
+    - name: allow ospf on firewall
+      ansible.posix.firewalld:
+        rich_rule: rule protocol value=ospf accept
+        permanent: true
+        immediate: true
+        state: enabled
+
+    - name: allow http traffic
+      ansible.posix.firewalld:
+        rich_rule: rule family=ipv4 service name=http destination address=192.168.200.1 accept
+        permanent: true
+        immediate: true
+        state: enabled
+
+    - name: install packages
+      ansible.builtin.dnf:
+        name:
+          - bird
+          - tcpdump
+          - nginx
+    
+    - name: template router config
+      ansible.builtin.template:
+        src: ../files/bird.conf
+        dest: /etc/bird.conf
+
+    - name: template ngninx config
+      ansible.builtin.template:
+        src: ../files/nginx.conf
+        dest: /etc/nginx.conf
+
+    - name: template index.html
+      ansible.builtin.template:
+        src: ../files/index.html
+        dest: /usr/share/nginx/html/index.html
+
+    - name: start and enable nginx
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true 
+    
+    - name: start and enable bird
+      ansible.builtin.service:
+        name: bird
+        state: started
+        enabled: true

@@ -1,0 +1,40 @@
+---
+
+- name: Configure router
+  hosts: all
+  gather_facts: true
+
+  tasks:
+
+    - name: set hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: set ipv4 forwarding
+      ansible.posix.sysctl:
+        name: "net.ipv4.conf.all.forwarding"
+        value: "1"
+
+    - name: allow ospf on firewall
+      ansible.posix.firewalld:
+        rich_rule: rule protocol value=ospf accept
+        permanent: true
+        immediate: true
+        state: enabled
+
+    - name: install packages
+      ansible.builtin.dnf:
+        name:
+          - bird
+          - tcpdump
+    
+    - name: template router config
+      ansible.builtin.template:
+        src: ../files/router_bird.conf
+        dest: /etc/bird.conf
+    
+    - name: start and enable bird
+      ansible.builtin.service:
+        name: bird
+        state: started
+        enabled: true
