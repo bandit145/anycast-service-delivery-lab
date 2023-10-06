@@ -1,0 +1,15 @@
+[Unit]
+Description=anycast loopback address
+After=network-online.target
+Wants=network-online.target
+Before={{ dependency_service }}.service
+BindsTo={{ dependency_service }}.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=ip addr add {{ anycast_addr }}/32 dev lo
+ExecStop=ip addr del {{ anycast_addr }}/32 dev lo
+
+[Install]
+WantedBy={{ dependency_service }}.service
